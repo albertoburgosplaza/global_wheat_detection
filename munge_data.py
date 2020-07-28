@@ -10,7 +10,7 @@ DATA_PATH = "C:/Users/alberto/Documents/datasets/global-wheat-detection"
 if __name__ == "__main__":
     df = pd.read_csv(os.path.join(DATA_PATH, "train.csv"))
     df.bbox = df.bbox.apply(ast.literal_eval)
-    df = df.groupby(["image_id", "source"])["bbox"].apply(list).reset_index(name="bboxes")
+    df = df.groupby(["image_id", "source"])["bbox"].apply(list).reset_index(name="boxes")
     df["kfold"] = -1
     df = df.sample(frac=1).reset_index(drop=True)
     source = df.source.values
