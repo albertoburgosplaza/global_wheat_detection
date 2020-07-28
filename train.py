@@ -27,5 +27,19 @@ if __name__ == "__main__":
         collate_fn=collate_fn
     )
 
+    val_dataset = WheatDataset(
+        df,
+        f"{DATA_PATH}/train",
+        df[df["kfold"] == fold].image_id.values
+    )
+
+    val_data_loader = DataLoader(
+        val_dataset,
+        batch_size=1,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=collate_fn
+    )
+
     image, target = next(iter(train_data_loader))
     print(target)
