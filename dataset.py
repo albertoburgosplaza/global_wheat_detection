@@ -18,7 +18,7 @@ class WheatDataset(Dataset):
 
     def __getitem__(self, idx:int):
         image_id = self.image_ids[idx]
-        boxes = self.df.loc[self.df["image_id"] == image_id, "bboxes"].apply(ast.literal_eval)
+        boxes = self.df.loc[self.df["image_id"] == image_id, "boxes"].apply(ast.literal_eval)
 
         if len(boxes) > 0:
             boxes = torch.FloatTensor(list(boxes))
