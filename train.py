@@ -1,21 +1,25 @@
 import os
 import pandas as pd
-from dataset import WheatDataset
+
+
 from torch.utils.data import DataLoader
 from utils import collate_fn
 import ast
 
 
-DATA_PATH = "C:/Users/alberto/Documents/datasets/global-wheat-detection"
+import dataset
+import config
+
+
 fold = 0
 
 
-if __name__ == "__main__":
-    df = pd.read_csv(os.path.join(DATA_PATH, "train_folds.csv"))
+def run_training():
+    df = pd.read_csv(os.path.join(config.DATA_PATH, "train_folds.csv"))
 
-    train_dataset = WheatDataset(
+    train_dataset = dataset.WheatDataset(
         df,
-        f"{DATA_PATH}/train",
+        f"{config.DATA_PATH}/train",
         df[df["kfold"] != fold].image_id.values
     )
 
@@ -27,9 +31,9 @@ if __name__ == "__main__":
         collate_fn=collate_fn
     )
 
-    val_dataset = WheatDataset(
+    val_dataset = dataset.WheatDataset(
         df,
-        f"{DATA_PATH}/train",
+        f"{config.DATA_PATH}/train",
         df[df["kfold"] == fold].image_id.values
     )
 
@@ -43,3 +47,7 @@ if __name__ == "__main__":
 
     image, target = next(iter(train_data_loader))
     print(target)
+
+
+if __name__ == "__main__":
+    run_training()
