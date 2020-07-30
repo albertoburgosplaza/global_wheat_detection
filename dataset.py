@@ -18,10 +18,17 @@ class WheatDataset(Dataset):
 
     def __getitem__(self, idx:int):
         image_id = self.image_ids[idx]
+
+
+        image = cv2.imread(f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+        image /= 255.0
+
+
         boxes = self.df.loc[self.df["image_id"] == image_id, "boxes"].apply(ast.literal_eval)
 
         if len(boxes) > 0:
-            boxes = torch.FloatTensor(list(boxes))
+            boxes = torch.FloatTensor(list(boxes))[0]
             # x1y1wh_to_x1y1x2y2
             x1 = boxes[:,0]
             y1 = boxes[:,1]
@@ -30,7 +37,7 @@ class WheatDataset(Dataset):
             x2 = x1 + w
             y2 = y1 + h
             boxes = torch.stack([x1,y1,x2,y2], dim=1)
-            labels = torch.zeros([boxes.shape[0]], dtype=torch.int64)
+            labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
         else:
             boxes = torch.empty((0, 4), dtype=torch.float32)
             labels = torch.empty((0), dtype=torch.int64)
@@ -39,9 +46,14 @@ class WheatDataset(Dataset):
         target['boxes'] = boxes
         target['labels'] = labels
 
-        image = cv2.imread(f"{self.image_dir}/{image_id}.jpg", cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
+        if self.transforms:
+            sample = self.transforms(**{
+                'image': image,
+                'bboxes': boxes,
+                'labels': labels
+            })
+            image = sample['image']
+            target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
 
         return image, target
 
