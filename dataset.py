@@ -7,6 +7,7 @@ import torch
 
 
 import config
+from utils import x1y1wh_to_x1y1x2y2
 
 
 class WheatDataset(Dataset):
@@ -35,14 +36,7 @@ class WheatDataset(Dataset):
 
         if len(boxes) > 0:
             boxes = torch.FloatTensor(list(boxes))[0]
-            # x1y1wh_to_x1y1x2y2
-            x1 = boxes[:,0]
-            y1 = boxes[:,1]
-            w = boxes[:,2]
-            h = boxes[:,3]
-            x2 = x1 + w
-            y2 = y1 + h
-            boxes = torch.stack([x1,y1,x2,y2], dim=1)
+            boxes = x1y1wh_to_x1y1x2y2(boxes)
             labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
         else:
             boxes = torch.empty((0, 4), dtype=torch.float32)

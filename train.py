@@ -11,7 +11,7 @@ import config
 from dataset import *
 from model import *
 from engine import *
-from utils import EarlyStopping
+from callbacks import EarlyStopping
 
 
 import albumentations as A
