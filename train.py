@@ -7,47 +7,81 @@ from utils import collate_fn
 import ast
 
 
-import dataset
 import config
+from dataset import *
+from model import *
+from engine import *
 
 
-fold = 0
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
 
 
-def run_training():
+def get_train_transforms():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
+
+
+def get_valid_transforms():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
+
+
+def run_training(fold:int):
+
     df = pd.read_csv(os.path.join(config.DATA_PATH, "train_folds.csv"))
 
-    train_dataset = dataset.WheatDataset(
+    train_dataset = WheatDataset(
         df,
         f"{config.DATA_PATH}/train",
-        df[df["kfold"] != fold].image_id.values
+        df[df["kfold"] != fold].image_id.values,
+        get_train_transforms()
     )
 
     train_data_loader = DataLoader(
         train_dataset,
-        batch_size=1,
+        batch_size=config.BATCH_SIZE,
         shuffle=True,
-        num_workers=0,
+        num_workers=config.NUM_WORKERS,
         collate_fn=collate_fn
     )
 
-    val_dataset = dataset.WheatDataset(
+    valid_dataset = WheatDataset(
         df,
         f"{config.DATA_PATH}/train",
-        df[df["kfold"] == fold].image_id.values
+        df[df["kfold"] == fold].image_id.values,
+        get_valid_transforms()
     )
 
-    val_data_loader = DataLoader(
-        val_dataset,
-        batch_size=1,
+    valid_data_loader = DataLoader(
+        valid_dataset,
+        batch_size=config.BATCH_SIZE,
         shuffle=False,
-        num_workers=0,
+        num_workers=config.NUM_WORKERS,
         collate_fn=collate_fn
     )
 
-    image, target = next(iter(train_data_loader))
-    print(target)
+
+    model = WheatModel(config.NUM_CLASSES)
+    model.to(config.DEVICE)
+
+    params = [p for p in model.parameters() if p.requires_grad]
+    lr = config.LR
+    optimizer = torch.optim.SGD(params, lr=lr, momentum=0.9, weight_decay=0.0005)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10000000, gamma=0.1)
+
+    epochs = config.EPOCHS
+    epoch = 1
+    for e in range(0,epochs):
+        model.train()
+        print(f'Starting epoch {epoch}')
+        loss = train_one_epoch(model, train_data_loader, optimizer, print_freq=50) / len(train_data_loader)
+        print(f'Epoch {epoch}, loss: {loss}')
+        epoch = epoch + 1
 
 
 if __name__ == "__main__":
-    run_training()
+    fold = 0
+    run_training(fold)
