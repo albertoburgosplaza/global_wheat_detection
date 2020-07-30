@@ -6,6 +6,12 @@ import ast
 import torch
 
 
+from torch.utils.data import DataLoader
+from utils import collate_fn
+import albumentations as A
+from albumentations.pytorch.transforms import ToTensorV2
+
+
 import config
 from utils import x1y1wh_to_x1y1x2y2
 
@@ -19,7 +25,7 @@ class WheatDataset(Dataset):
         self.image_dir = image_dir
         self.image_ids = image_ids
         if config.DEBUG:
-            self.image_ids = image_ids[:round(len(image_ids)*.1)]
+            self.image_ids = image_ids[:round(len(image_ids)*0.05)]
         self.transforms = transforms
         self.test = test
 
@@ -59,3 +65,54 @@ class WheatDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.image_ids)
+
+
+def get_train_data_loader(df, fold):
+    train_dataset = WheatDataset(
+        df,
+        f"{config.DATA_PATH}/train",
+        df[df["kfold"] != fold].image_id.values,
+        get_train_transforms()
+    )
+
+    train_data_loader = DataLoader(
+        train_dataset,
+        batch_size=config.TRAIN_BATCH_SIZE,
+        shuffle=True,
+        num_workers=config.NUM_WORKERS,
+        collate_fn=collate_fn
+    )
+
+    return train_data_loader
+
+
+def get_valid_data_loader(df, fold):
+    valid_dataset = WheatDataset(
+        df,
+        f"{config.DATA_PATH}/train",
+        df[df["kfold"] == fold].image_id.values,
+        get_valid_transforms()
+    )
+
+    valid_data_loader = DataLoader(
+        valid_dataset,
+        batch_size=config.VALID_BATCH_SIZE,
+        shuffle=False,
+        num_workers=config.NUM_WORKERS,
+        collate_fn=collate_fn
+    )
+
+    return valid_data_loader
+
+
+def get_train_transforms():
+    return A.Compose([
+        A.Flip(p=0.5),
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
+
+
+def get_valid_transforms():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
