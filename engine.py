@@ -3,7 +3,7 @@ import math
 
 
 import config
-from utils import batch_average_precision
+from metrics import batch_average_precision
 
 
 def train_one_step(model, images, targets, optimizer):

@@ -11,6 +11,7 @@ import config
 from dataset import *
 from model import *
 from engine import *
+from utils import EarlyStopping
 
 
 import albumentations as A
@@ -72,11 +73,17 @@ def run_training(fold:int):
     lr = config.LR
     optimizer = torch.optim.SGD(params, lr=lr, momentum=0.9, weight_decay=0.0005)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10000000, gamma=0.1)
+    es = EarlyStopping(patience=5, mode="max", verbose=True)
 
     print_freq = round(len(train_data_loader)/4)
     for epoch in range(0, config.EPOCHS):
         loss = train_one_epoch(model, train_data_loader, optimizer, epoch, print_freq)
         m_ap = evaluate(model, valid_data_loader, epoch)
+
+        es(m_ap, model)
+        if es.early_stop:
+            print("Early stopping")
+            break
 
 
 if __name__ == "__main__":

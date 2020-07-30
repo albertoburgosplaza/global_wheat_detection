@@ -1,80 +1,61 @@
 import numpy as np
+import torch
 
 
 def collate_fn(batch):
     return tuple(zip(*batch))
 
 
-def intersection_over_union(x1_p, y1_p, x2_p, y2_p, x1_g, y1_g, x2_g, y2_g):
-    # Determine the (x, y)-coordinates of the intersection rectangle
-    x1_i = max(x1_p, x1_g)
-    y1_i = max(y1_p, y1_g)
-    x2_i = min(x2_p, x2_g)
-    y2_i = min(y2_p, y2_g)
+# from https://github.com/Bjarten/early-stopping-pytorch
+class EarlyStopping:
+    """Early stops the training if metric doesn't improve after a given patience."""
+    def __init__(self, patience=7, mode="min", verbose=False, delta=0, path='checkpoint.pt'):
+        """
+        Args:
+            patience (int): How long to wait after last time metric improved.
+                            Default: 7
+            mode (str): Sets id the improvement is due to a maximization ("max") or a minimization ("min").
+                            Default: "min"
+            verbose (bool): If True, prints a message for each metric improvement. 
+                            Default: False
+            delta (float): Minimum change in the monitored quantity to qualify as an improvement.
+                            Default: 0
+            path (str): Path for the checkpoint to be saved to.
+                            Default: 'checkpoint.pt'
+        """
+        self.patience = patience
+        self.mode = mode
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.metric_min = np.Inf
+        self.delta = delta
+        self.path = path
 
-    # Compute the area of intersection rectangle
-    i_area = max(0, x2_i - x1_i + 1) * max(0, y2_i - y1_i + 1)
-    
-    # Compute the area of both the prediction and ground-truth rectangles
-    p_area = (x2_p - x1_p + 1) * (y2_p - y1_p + 1)
-    g_area = (x2_g - x1_g + 1) * (y2_g - y1_g + 1)
-    
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = i_area / float(p_area + g_area - i_area)
+    def __call__(self, metric, model):
 
-    return iou
+        if self.mode == "min":
+            score = -metric
+        else:
+            score = metric
 
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(metric, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(metric, model)
+            self.counter = 0
 
-def average_precision(boxes, boxes_gt):
-    iou = []
-
-    for p in range(0, len(boxes)):
-        x1_p, y1_p, x2_p, y2_p = boxes[p]
-        for g in range(0, len(boxes_gt)):
-            x1_g, y1_g, x2_g, y2_g = boxes_gt[g]
-            iou.append(intersection_over_union(x1_p, y1_p, x2_p, y2_p, x1_g, y1_g, x2_g, y2_g))
-
-    iou = np.array(iou)
-    iou = iou.reshape(len(boxes), len(boxes_gt))
-    ap = 0
-    
-    for t in np.linspace(.5, .75, 6):
-        tp = 0
-        fp = 0
-        fn = 0
-
-        for p in range(0, len(boxes)):
-            hits = (iou > t)[p,:].sum()
-            if hits:
-                tp = tp + 1
-                fp = fp + hits - 1
-            else:
-                fp = fp + 1
-
-        for g in range(0, len(boxes_gt)):
-            hits = (iou > t)[:,g].sum()
-            if not(hits):
-                fn = fn + 1
-                
-        ap = ap + (tp / (tp + fp + fn))
-        
-    ap = ap / 6
-
-    return ap
-
-
-def batch_average_precision(outputs, targets):
-    score_threshold = 0.5
-    m_ap_batch = 0
-
-    for i in range(0, len(outputs)):
-        scores = outputs[i]['scores'].cpu().detach().numpy()
-        boxes = outputs[i]['boxes'].cpu().detach().numpy()
-        boxes = boxes[scores > score_threshold]
-        boxes_gt = targets[i]['boxes'].cpu().detach().numpy()
-        
-        m_ap_batch += average_precision(boxes, boxes_gt)
-            
-    return m_ap_batch / len(outputs)
+    def save_checkpoint(self, metric, model):
+        '''Saves model when metric improves.'''
+        if self.verbose:
+            print(f'Validation metric improved ({self.metric_min:.6f} --> {metric:.6f}).  Saving model ...')
+        torch.save(model.state_dict(), self.path)
+        self.metric_min = metric
