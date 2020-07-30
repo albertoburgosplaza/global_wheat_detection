@@ -5,6 +5,10 @@ from torch.utils.data import Dataset
 import ast
 import torch
 
+
+import config
+
+
 class WheatDataset(Dataset):
 
     def __init__(self, dataframe, image_dir, image_ids, transforms=None, test=False):
@@ -13,6 +17,8 @@ class WheatDataset(Dataset):
         self.df = dataframe
         self.image_dir = image_dir
         self.image_ids = image_ids
+        if config.DEBUG:
+            self.image_ids = image_ids[:round(len(image_ids)*.1)]
         self.transforms = transforms
         self.test = test
 
@@ -53,7 +59,7 @@ class WheatDataset(Dataset):
                 'labels': labels
             })
             image = sample['image']
-            target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
+            target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0).float()
 
         return image, target
 
