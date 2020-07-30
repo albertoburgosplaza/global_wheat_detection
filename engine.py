@@ -3,6 +3,7 @@ import math
 
 
 import config
+from utils import batch_average_precision
 
 
 def train_one_step(model, images, targets, optimizer):
@@ -25,7 +26,10 @@ def train_one_step(model, images, targets, optimizer):
     return loss_value
 
 
-def train_one_epoch(model, data_loader, optimizer, print_freq=5):
+def train_one_epoch(model, data_loader, optimizer, epoch, print_freq=5):
+    print(f'Starting epoch {epoch}/{config.EPOCHS-1}')
+    model.train()
+
     step = 0
     epoch_loss = 0
 
@@ -33,9 +37,34 @@ def train_one_epoch(model, data_loader, optimizer, print_freq=5):
         loss = train_one_step(model, images, targets, optimizer)
                 
         if step % print_freq == 0:
-            print(f'Step {step}, loss: {loss}')
+            print(f'Step {step}/{len(data_loader)-1}, loss: {loss}')
                 
         step = step + 1
         epoch_loss = epoch_loss + loss
+
+    epoch_loss /= len(data_loader)
+
+    print(f'Epoch {epoch}/{config.EPOCHS-1}, loss: {epoch_loss}')
         
     return epoch_loss
+
+
+def evaluate(model, data_loader, epoch):
+    print(f'Starting evaluation')
+    model.eval()
+
+    m_ap = 0
+
+    for images, targets in data_loader:
+        images = list(image.to(config.DEVICE) for image in images)
+        outputs = model(images)
+        outputs = [{k: v for k, v in t.items()} for t in outputs]
+        targets = [{k: v for k, v in t.items()} for t in targets]
+
+        m_ap += batch_average_precision(outputs, targets)
+
+    m_ap /= len(data_loader)
+
+    print(f'Epoch {epoch}/{config.EPOCHS-1}, mAP: {m_ap}')
+
+    return m_ap
