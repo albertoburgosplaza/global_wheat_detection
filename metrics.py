@@ -1,4 +1,5 @@
 import numpy as np
+import config
 
 
 def intersection_over_union(x1_p, y1_p, x2_p, y2_p, x1_g, y1_g, x2_g, y2_g):
@@ -62,13 +63,12 @@ def average_precision(boxes, boxes_gt):
 
 
 def batch_average_precision(outputs, targets):
-    score_threshold = 0.5
     m_ap_batch = 0
 
     for i in range(0, len(outputs)):
         scores = outputs[i]['scores'].cpu().detach().numpy()
         boxes = outputs[i]['boxes'].cpu().detach().numpy()
-        boxes = boxes[scores > score_threshold]
+        boxes = boxes[scores > config.SCORE_THRESHOLD]
         boxes_gt = targets[i]['boxes'].cpu().detach().numpy()
         
         m_ap_batch += average_precision(boxes, boxes_gt)

@@ -18,7 +18,7 @@ from utils import x1y1wh_to_x1y1x2y2
 
 class WheatDataset(Dataset):
 
-    def __init__(self, dataframe, image_dir, image_ids, transforms=None, test=False):
+    def __init__(self, image_dir, image_ids, dataframe=None, transforms=None, test=False):
         super().__init__()
 
         self.df = dataframe
@@ -38,30 +38,40 @@ class WheatDataset(Dataset):
         image /= 255.0
 
 
-        boxes = self.df.loc[self.df["image_id"] == image_id, "boxes"].apply(ast.literal_eval)
+        if self.test:
+            if self.transforms:
+                sample = self.transforms(**{
+                    'image': image
+                })
+                image = sample['image']
 
-        if len(boxes) > 0:
-            boxes = torch.FloatTensor(list(boxes))[0]
-            boxes = x1y1wh_to_x1y1x2y2(boxes)
-            labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
+            return image, image_id
+
         else:
-            boxes = torch.empty((0, 4), dtype=torch.float32)
-            labels = torch.empty((0), dtype=torch.int64)
-        
-        target = {}
-        target['boxes'] = boxes
-        target['labels'] = labels
+            boxes = self.df.loc[self.df["image_id"] == image_id, "boxes"].apply(ast.literal_eval)
 
-        if self.transforms:
-            sample = self.transforms(**{
-                'image': image,
-                'bboxes': boxes,
-                'labels': labels
-            })
-            image = sample['image']
-            target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0).float()
+            if len(boxes) > 0:
+                boxes = torch.FloatTensor(list(boxes))[0]
+                boxes = x1y1wh_to_x1y1x2y2(boxes)
+                labels = torch.ones((boxes.shape[0],), dtype=torch.int64)
+            else:
+                boxes = torch.empty((0, 4), dtype=torch.float32)
+                labels = torch.empty((0), dtype=torch.int64)
+            
+            target = {}
+            target['boxes'] = boxes
+            target['labels'] = labels
 
-        return image, target
+            if self.transforms:
+                sample = self.transforms(**{
+                    'image': image,
+                    'bboxes': boxes,
+                    'labels': labels
+                })
+                image = sample['image']
+                target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0).float()
+
+            return image, target
 
     def __len__(self) -> int:
         return len(self.image_ids)
@@ -69,9 +79,9 @@ class WheatDataset(Dataset):
 
 def get_train_data_loader(df, fold):
     train_dataset = WheatDataset(
-        df,
         f"{config.DATA_PATH}/train",
         df[df["kfold"] != fold].image_id.values,
+        df,
         get_train_transforms()
     )
 
@@ -88,9 +98,9 @@ def get_train_data_loader(df, fold):
 
 def get_valid_data_loader(df, fold):
     valid_dataset = WheatDataset(
-        df,
         f"{config.DATA_PATH}/train",
         df[df["kfold"] == fold].image_id.values,
+        df,
         get_valid_transforms()
     )
 
@@ -105,6 +115,25 @@ def get_valid_data_loader(df, fold):
     return valid_data_loader
 
 
+def get_test_data_loader():
+    test_dataset = WheatDataset(
+        f"{config.DATA_PATH}/test",
+        [f.split(".")[:-1][0] for f in os.listdir(f"{config.DATA_PATH}/test")],
+        transforms=get_test_transforms(),
+        test=True
+    )
+
+    test_data_loader = DataLoader(
+        test_dataset,
+        batch_size=config.TEST_BATCH_SIZE,
+        shuffle=False,
+        num_workers=config.NUM_WORKERS,
+        collate_fn=collate_fn
+    )
+
+    return test_data_loader
+
+
 def get_train_transforms():
     return A.Compose([
         A.Flip(p=0.5),
@@ -116,3 +145,9 @@ def get_valid_transforms():
     return A.Compose([
         ToTensorV2(p=1.0)
     ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
+
+
+def get_test_transforms():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ])

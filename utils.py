@@ -27,3 +27,11 @@ def x1y1wh_to_x1y1x2y2(boxes):
     y2 = y1 + h
     boxes = torch.stack([x1,y1,x2,y2], dim=1)
     return boxes
+
+
+def format_prediction_string(boxes, scores):
+    pred_strings = []
+    for s, b in zip(scores, boxes.astype(int)):
+        pred_strings.append(f'{s:.4f} {b[0]} {b[1]} {b[2] - b[0]} {b[3] - b[1]}')
+
+    return " ".join(pred_strings)

@@ -15,7 +15,7 @@ def train_one_step(model, images, targets, optimizer):
     loss_value = losses.item()
 
     if not math.isfinite(loss_value):
-        print('Loss is {}, stopping training'.format(loss_value))
+        print("Loss is {}, stopping training".format(loss_value))
         print(loss_dict)
         sys.exit(1)
     
@@ -27,7 +27,7 @@ def train_one_step(model, images, targets, optimizer):
 
 
 def train_one_epoch(model, data_loader, optimizer, epoch, print_freq=5):
-    print(f'Starting epoch {epoch}/{config.EPOCHS-1}')
+    print(f"Starting epoch {epoch}/{config.EPOCHS-1}")
     model.train()
 
     step = 0
@@ -37,20 +37,20 @@ def train_one_epoch(model, data_loader, optimizer, epoch, print_freq=5):
         loss = train_one_step(model, images, targets, optimizer)
                 
         if step % print_freq == 0:
-            print(f'Step {step}/{len(data_loader)-1}, loss: {loss}')
+            print(f"Step {step}/{len(data_loader)-1}, loss: {loss}")
                 
         step = step + 1
         epoch_loss = epoch_loss + loss
 
     epoch_loss /= len(data_loader)
 
-    print(f'Epoch {epoch}/{config.EPOCHS-1}, loss: {epoch_loss}')
+    print(f"Epoch {epoch}/{config.EPOCHS-1}, loss: {epoch_loss}")
         
     return epoch_loss
 
 
 def evaluate(model, data_loader, epoch):
-    print(f'Starting evaluation')
+    print(f"Starting evaluation")
     model.eval()
 
     m_ap = 0
@@ -65,6 +65,6 @@ def evaluate(model, data_loader, epoch):
 
     m_ap /= len(data_loader)
 
-    print(f'Epoch {epoch}/{config.EPOCHS-1}, mAP: {m_ap}')
+    print(f"Epoch {epoch}/{config.EPOCHS-1}, mAP: {m_ap}")
 
     return m_ap
