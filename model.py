@@ -1,6 +1,8 @@
+import torch
 from torch import nn
 import torchvision
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+import config
 
 
 class WheatModel(nn.Module):
@@ -21,3 +23,12 @@ class WheatModel(nn.Module):
     def forward(self, images, targets=None):
         loss_dict = self.model(images, targets)
         return loss_dict
+
+
+def load_trained_model(checkpoint_path):
+    model = WheatModel(config.NUM_CLASSES, pretrained=False)
+    model.load_state_dict(torch.load(checkpoint_path))
+    model.eval()
+    model.to(config.DEVICE)
+
+    return model
