@@ -26,7 +26,7 @@ def run_training(fold:int):
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)
 
 
-    es = EarlyStopping(patience=10, mode="max", verbose=True)
+    es = EarlyStopping(patience=10, mode="max", verbose=True, path=f"checkpoint-f{fold}.pt")
     tb = SummaryWriter(comment=f"lr={config.LR}")
 
 
@@ -51,3 +51,7 @@ def run_training(fold:int):
 
 if __name__ == "__main__":
     run_training(fold=0)
+    run_training(fold=1)
+    run_training(fold=2)
+    run_training(fold=3)
+    run_training(fold=4)
