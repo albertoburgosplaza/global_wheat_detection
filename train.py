@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import torch
+from torch.utils.tensorboard import SummaryWriter
 
 
 import config
@@ -22,18 +23,30 @@ def run_training(fold:int):
 
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=config.LR, momentum=0.9, weight_decay=0.0005)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10000000, gamma=0.1)
-    es = EarlyStopping(patience=5, mode="max", verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5)
+
+
+    es = EarlyStopping(patience=10, mode="max", verbose=True)
+    tb = SummaryWriter(comment=f"lr={config.LR}")
+
 
     print_freq = round(len(train_data_loader)/4)
     for epoch in range(0, config.EPOCHS):
         loss = train_one_epoch(model, train_data_loader, optimizer, epoch, print_freq)
+        tb.add_scalar('loss', loss, epoch)
         m_ap = evaluate(model, valid_data_loader, epoch)
+        tb.add_scalar('mAP', m_ap, epoch)
+
 
         es(m_ap, model)
         if es.early_stop:
             print("Early stopping")
             break
+
+        scheduler.step(m_ap)
+
+
+    tb.close()
 
 
 if __name__ == "__main__":
