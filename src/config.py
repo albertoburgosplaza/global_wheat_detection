@@ -1,8 +1,8 @@
-DATA_PATH = "C:/Users/alberto/Documents/datasets/global-wheat-detection"
+DATA_PATH = "/home/root/workspace/input"
 TRAIN_BATCH_SIZE = 4
 VALID_BATCH_SIZE = 2
 TEST_BATCH_SIZE = 4
-NUM_CLASSES = 2 # 1 class (wheat) + background
+NUM_CLASSES = 2  # 1 class (wheat) + background
 NUM_WORKERS = 0
 EPOCHS = 10
 DEVICE = "cuda"
